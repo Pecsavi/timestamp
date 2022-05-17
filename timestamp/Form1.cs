@@ -9,6 +9,7 @@ namespace timestamp
 
     public partial class Timestamp : Form
     {
+
         int counter = 0;
         string title="Log";
         string text, in_out, sum;
@@ -22,18 +23,27 @@ namespace timestamp
 
         public Timestamp()
         {
-            InitializeComponent();
-            this.TopMost=true;
-            this.StartPosition = FormStartPosition.Manual;
-            scr = Screen.FromPoint(this.Location);
-            this.Location = new Point(scr.WorkingArea.Right - this.Width-20, scr.WorkingArea.Top);
-            label1.Text = ("New work tread:" + DateTime.Now.ToString("d"));
-            label1.Font=font;
-            //form1 = this;
+           
+                InitializeComponent();
+                this.TopMost = true;
+                this.StartPosition = FormStartPosition.Manual;
+                scr = Screen.FromPoint(this.Location);
+                this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
+                label1.Text = ("New work tread:" + DateTime.Now.ToString("d"));
+                label1.Font = font;
+
+            
 
         }
 
-        
+        private void form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            string Path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
+            StreamWriter sw = new StreamWriter(Path, true);
+            sw.WriteLine("Work tread finished:" + DateTime.Now.ToString("HH:mm:ss") + "  -  Sum Time:" + delta2.ToString(@"dd\:hh\:mm"));
+            sw.Close();
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
             Export();
@@ -51,14 +61,14 @@ namespace timestamp
                 sw.WriteLine("\n"+label1.Text);
             }
             
-            in_out = "in:    ";
+            in_out = "in: ";
             sum = "";
             if (counter % 2 == 0)
             {
                 button1.BackColor = Color.LightGreen;
                 sw.WriteLine("");
                 time1 = DateTime.Now;
-                InputBox(this,"Login", "Description of starting activity:", ref text);
+                InputBox(this,"check in", "Description of starting activity:", ref text);
             }
             else
             {
@@ -67,13 +77,13 @@ namespace timestamp
                 time2 = DateTime.Now;
                 delta1 = time2.Subtract(time1);
                 delta2 = delta2.Add(delta1);
-                in_out = "out:   ";
-                sum = "Sum:" + delta1.ToString(@"hh\:mm");
+                in_out = "out:";
+                sum = "S:" + delta1.ToString(@"hh\:mm")+ " SS:" + delta2.ToString(@"hh\:mm");
                 
             }
             
             
-            string loginfo = sum=="" ?  in_out + time1.ToString("HH:mm:ss") +  "   " + text : in_out + time1.ToString("HH:mm:ss") + "   " + sum ;
+            string loginfo = sum=="" ?  in_out + time1.ToString("HH:mm:ss") +  "   " + text : in_out + time2.ToString("HH:mm:ss") + "   " + sum ;
             sw.WriteLine(loginfo);
             sw.Close();
             Felrak(loginfo);
