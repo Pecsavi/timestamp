@@ -11,19 +11,19 @@ namespace timestamp
     {
 
         int counter = 0;
-        string title="Log";
-        string text, in_out, sum;
+        string inputFeld, loginfo;
         Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
         Label lbl;
-        DateTime time1, time2;
-        TimeSpan delta1, delta2;
+        DateTime startTime, endTime;
+        TimeSpan deltaEtap, deltaTread, oneMinute= TimeSpan.FromMinutes(1);
         Screen scr;
-        //Form form1;
-        
+       
+        bool newActivity = false;
+        string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
+        StreamWriter sw;
 
         public Timestamp()
         {
-           
                 InitializeComponent();
                 this.TopMost = true;
                 this.StartPosition = FormStartPosition.Manual;
@@ -31,64 +31,94 @@ namespace timestamp
                 this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
                 label1.Text = ("New work tread:" + DateTime.Now.ToString("d"));
                 label1.Font = font;
-
-            
-
         }
 
         private void form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            string Path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
-            StreamWriter sw = new StreamWriter(Path, true);
-            sw.WriteLine("Work tread finished:" + DateTime.Now.ToString("HH:mm:ss") + "  -  Sum Time:" + delta2.ToString(@"dd\:hh\:mm"));
+          
+            endTime = DateTime.Now;
+            deltaEtap = endTime.Subtract(startTime)+ oneMinute;
+            deltaTread = deltaTread.Add(deltaEtap);
+            sw = new StreamWriter(path, true);
+            sw.WriteLine("");
+            sw.WriteLine("The user has logged out at:" + endTime.ToString("HH:mm:ss"));
+            sw.WriteLine("Work tread finished:" + "  -  Sum Time:" + deltaTread.ToString(@"hh\:mm"));
             sw.Close();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            newActivity = true;
+            Export(path);
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            Export();
+            if (button1.Text == "ongoing")
+            {
+                button1.BackColor = Color.LightPink;
+                button1.Text = "stopped";
+            }
+            else
+            {
+                button1.BackColor = Color.LightGreen;
+                button1.Text = "ongoing";
+            }
+            Export(path);
         }
         
-        public void Export()
+        public void Export(string path )
         {
-            text = "";
-            button1.Text = "activity is in progress";
-            string Path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)+ @"\timestamp.txt";
-           
-            StreamWriter sw = new StreamWriter(Path , true);
+            inputFeld = "";
+            
+            loginfo = "";
+
+            sw = new StreamWriter(path , true);
             if (counter==0)
             { 
                 sw.WriteLine("\n"+label1.Text);
             }
-            
-            in_out = "in: ";
-            sum = "";
-            if (counter % 2 == 0)
+            if (newActivity)
             {
-                button1.BackColor = Color.LightGreen;
-                sw.WriteLine("");
-                time1 = DateTime.Now;
-                InputBox(this,"check in", "Description of starting activity:", ref text);
+                endTime = DateTime.Now;
+                InputBox(this, "new activity", "Description:", ref inputFeld);
+                deltaEtap = endTime.Subtract(startTime) + oneMinute;
+                deltaTread = deltaTread.Add(deltaEtap);
+                
+                loginfo = "   " + endTime.ToString("HH:mm:ss") + "   " + inputFeld + "   " +
+                    "S:" + deltaEtap.ToString(@"hh\:mm");
+                
+                startTime = DateTime.Now;
+                newActivity = false;
+                counter--;
             }
-            else
+           
+            else if (counter % 2 == 0)
             {
-                button1.BackColor = Color.LightPink;
-                button1.Text = "activity is stopped";
-                time2 = DateTime.Now;
-                delta1 = time2.Subtract(time1);
-                delta2 = delta2.Add(delta1);
-                in_out = "out:";
-                sum = "S:" + delta1.ToString(@"hh\:mm")+ " SS:" + delta2.ToString(@"hh\:mm");
+                sw.WriteLine("");
+                startTime = DateTime.Now;
+                InputBox(this,"new activity", "Description:", ref inputFeld);
+                loginfo = "in :" + startTime.ToString("HH:mm:ss")+"  " + inputFeld;
+                button2.Enabled = true;
+            }
+            else if (counter % 2 != 0)
+            {
+                endTime = DateTime.Now;
+                deltaEtap = endTime.Subtract(startTime) + oneMinute;
+                deltaTread = deltaTread.Add(deltaEtap);
+                loginfo = "out :" + endTime.ToString("HH:mm:ss") + "   " + 
+                    "S:" + deltaEtap.ToString(@"hh\:mm") + " SS:" + deltaTread.ToString(@"hh\:mm");
+                button2.Enabled = false;
                 
             }
-            
-            
-            string loginfo = sum=="" ?  in_out + time1.ToString("HH:mm:ss") +  "   " + text : in_out + time2.ToString("HH:mm:ss") + "   " + sum ;
+                       
+           
             sw.WriteLine(loginfo);
             sw.Close();
             Felrak(loginfo);
             counter++;
-            
+
+
         }
         public void Felrak(string loginfo)
         {
