@@ -15,7 +15,7 @@ namespace timestamp
         Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
         Label lbl;
         DateTime startTime, endTime;
-        TimeSpan deltaEtap, deltaTread, oneMinute= TimeSpan.FromMinutes(1);
+        TimeSpan deltaEtap, deltaTread, halfMinute= TimeSpan.FromSeconds(30);
         Screen scr;
        
         bool newActivity = false;
@@ -24,25 +24,31 @@ namespace timestamp
 
         public Timestamp()
         {
-                InitializeComponent();
-                this.TopMost = true;
-                this.StartPosition = FormStartPosition.Manual;
-                scr = Screen.FromPoint(this.Location);
-                this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
-                label1.Text = ("New work tread:" + DateTime.Now.ToString("d"));
-                label1.Font = font;
+            InitializeComponent();
+            this.TopMost = true;
+            this.StartPosition = FormStartPosition.Manual;
+            scr = Screen.FromPoint(this.Location);
+            this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
+            label1.Text = ("New work:" + DateTime.Now.ToString("d"));
+            label1.Font = font;
+            button2.Enabled = false;
         }
 
         private void form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-          
             endTime = DateTime.Now;
-            deltaEtap = endTime.Subtract(startTime)+ oneMinute;
-            deltaTread = deltaTread.Add(deltaEtap);
+
+            if (button1.Text== "ongoing")
+            {
+                deltaEtap = endTime.Subtract(startTime) + halfMinute;
+                deltaTread = deltaTread.Add(deltaEtap);
+            }
+            
             sw = new StreamWriter(path, true);
+            
+            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out" );
             sw.WriteLine("");
-            sw.WriteLine("The user has logged out at:" + endTime.ToString("HH:mm:ss"));
-            sw.WriteLine("Work tread finished:" + "  -  Sum Time:" + deltaTread.ToString(@"hh\:mm"));
+            sw.WriteLine("Work finished:" + "  -  Sum Time:" + deltaTread.ToString(@"hh\:mm"));
             sw.Close();
         }
 
@@ -82,11 +88,11 @@ namespace timestamp
             {
                 endTime = DateTime.Now;
                 InputBox(this, "new activity", "Description:", ref inputFeld);
-                deltaEtap = endTime.Subtract(startTime) + oneMinute;
+                deltaEtap = endTime.Subtract(startTime) + halfMinute;
                 deltaTread = deltaTread.Add(deltaEtap);
                 
-                loginfo = "   " + endTime.ToString("HH:mm:ss") + "   " + inputFeld + "   " +
-                    "S:" + deltaEtap.ToString(@"hh\:mm");
+                loginfo = "      -" + endTime.ToString("HH:mm") + "   " + inputFeld + "   " +
+                    "\u0394:" + deltaTread.ToString(@"hh\:mm");
                 
                 startTime = DateTime.Now;
                 newActivity = false;
@@ -95,19 +101,18 @@ namespace timestamp
            
             else if (counter % 2 == 0)
             {
-                sw.WriteLine("");
                 startTime = DateTime.Now;
                 InputBox(this,"new activity", "Description:", ref inputFeld);
-                loginfo = "in :" + startTime.ToString("HH:mm:ss")+"  " + inputFeld;
+                loginfo = "in :" + startTime.ToString("HH:mm")+"  " + inputFeld;
                 button2.Enabled = true;
             }
             else if (counter % 2 != 0)
             {
                 endTime = DateTime.Now;
-                deltaEtap = endTime.Subtract(startTime) + oneMinute;
+                deltaEtap = endTime.Subtract(startTime) + halfMinute;
                 deltaTread = deltaTread.Add(deltaEtap);
-                loginfo = "out :" + endTime.ToString("HH:mm:ss") + "   " + 
-                    "S:" + deltaEtap.ToString(@"hh\:mm") + " SS:" + deltaTread.ToString(@"hh\:mm");
+                loginfo = "out:" + endTime.ToString("HH:mm") + "   " +
+                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " sum \u0394: " + deltaTread.ToString(@"hh\:mm");
                 button2.Enabled = false;
                 
             }
@@ -137,7 +142,7 @@ namespace timestamp
             lbl = new Label();
             lbl.AutoSize = true;
             lbl.Font = font;
-            lbl.Location = new Point(5, 10);
+            lbl.Location = new Point(5, 11);
             lbl.Text = loginfo;
             panel1.Controls.Add(lbl);
             panel1.Height= panel1.Height + 25;
