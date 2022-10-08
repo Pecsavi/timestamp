@@ -2,22 +2,25 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
+using System.Threading;
+
 
 namespace timestamp
 {
-
+    
 
     public partial class Timestamp : Form
     {
 
         int counter = 0;
-        string inputFeld, loginfo;
+        string inputFeld, loginfo, buttonIdeiglenes;
         Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
         Label lbl;
-        DateTime startTime, endTime;
-        TimeSpan deltaEtap, deltaTread, halfMinute= TimeSpan.FromSeconds(30);
-        Screen scr;
+        DateTime startTime = DateTime.Now, endTime;
+        TimeSpan deltaEtap, deltaTread, halfMinute = TimeSpan.FromSeconds(25);
        
+        Screen scr;
+
         bool newActivity = false;
         string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
         StreamWriter sw;
@@ -28,53 +31,62 @@ namespace timestamp
             this.TopMost = true;
             this.StartPosition = FormStartPosition.Manual;
             scr = Screen.FromPoint(this.Location);
-            this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
+            //this.Location = new Point(scr.WorkingArea.Right - this.Width - 20, scr.WorkingArea.Top);
+            this.Location = new Point(scr.WorkingArea.Right/2, scr.WorkingArea.Bottom/2);
+           
+
             label1.Text = ("New work:" + DateTime.Now.ToString("d"));
             label1.Font = font;
-            button2.Enabled = false;
+   
         }
 
         private void form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             endTime = DateTime.Now;
 
-            if (button1.Text== "ongoing")
+            if (button1.Text == "ongoing")
             {
                 deltaEtap = endTime.Subtract(startTime) + halfMinute;
                 deltaTread = deltaTread.Add(deltaEtap);
             }
-            
+
             sw = new StreamWriter(path, true);
-            
-            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out" );
-            sw.WriteLine("");
+
+            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out" + deltaEtap.ToString(@"hh\:mm"));
             sw.WriteLine("Work finished:" + "  -  Sum Time:" + deltaTread.ToString(@"hh\:mm"));
             sw.Close();
+
         }
 
-        private void button2_Click(object sender, EventArgs e)
-        {
-            newActivity = true;
-            Export(path);
-        }
+        
 
         private void button1_Click(object sender, EventArgs e)
         {
+            
             if (button1.Text == "ongoing")
             {
+                
+                newActivity = false;
                 button1.BackColor = Color.LightPink;
                 button1.Text = "stopped";
+             
             }
             else
             {
-                button1.BackColor = Color.LightGreen;
-                button1.Text = "ongoing";
+
+                
+                    newActivity = true;
+                    button1.BackColor = Color.LightGreen;
+                    button1.Text = "ongoing";
+                
+                
             }
             Export(path);
         }
         
         public void Export(string path )
         {
+            
             inputFeld = "";
             
             loginfo = "";
@@ -82,38 +94,35 @@ namespace timestamp
             sw = new StreamWriter(path , true);
             if (counter==0)
             { 
-                sw.WriteLine("\n"+label1.Text);
+                sw.WriteLine("\n\n" + label1.Text);
             }
             if (newActivity)
             {
-                endTime = DateTime.Now;
-                InputBox(this, "new activity", "Description:", ref inputFeld);
-                deltaEtap = endTime.Subtract(startTime) + halfMinute;
-                deltaTread = deltaTread.Add(deltaEtap);
-                
-                loginfo = "      -" + endTime.ToString("HH:mm") + "   " + inputFeld + "   " +
-                    "\u0394:" + deltaTread.ToString(@"hh\:mm");
-                
                 startTime = DateTime.Now;
+
+                InputBox(this, "new activity", "Description:", ref inputFeld);
+               
+                loginfo = "in :" + startTime.ToString("HH:mm") + "  " + inputFeld;
+               
+                
                 newActivity = false;
-                counter--;
+                
             }
            
-            else if (counter % 2 == 0)
+            else 
             {
-                startTime = DateTime.Now;
-                InputBox(this,"new activity", "Description:", ref inputFeld);
-                loginfo = "in :" + startTime.ToString("HH:mm")+"  " + inputFeld;
-                button2.Enabled = true;
-            }
-            else if (counter % 2 != 0)
-            {
+
+                
+                
                 endTime = DateTime.Now;
+                
+                 
+                //InputBox(this, "stop activity", "Description:", ref inputFeld);
                 deltaEtap = endTime.Subtract(startTime) + halfMinute;
                 deltaTread = deltaTread.Add(deltaEtap);
                 loginfo = "out:" + endTime.ToString("HH:mm") + "   " +
-                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " sum \u0394: " + deltaTread.ToString(@"hh\:mm");
-                button2.Enabled = false;
+                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm");
+               
                 
             }
                        
@@ -167,7 +176,7 @@ namespace timestamp
             buttonCancel.Text = "Cancel";
             buttonOk.DialogResult = DialogResult.OK;
             buttonCancel.DialogResult = DialogResult.Cancel;
-
+            
             label.SetBounds(9, 20, 372, 13);
             textBox.SetBounds(12, 36, 372, 20);
             buttonOk.SetBounds(228, 72, 75, 23);
@@ -184,7 +193,9 @@ namespace timestamp
             form.FormBorderStyle = FormBorderStyle.FixedDialog;
             form.StartPosition = FormStartPosition.Manual;
             Form form2 = sender as Form;
-            form.Location = new Point (form2.Bounds.X-form.Width, form2.Bounds.Y);
+            Screen scr = Screen.FromPoint(form.Location);
+            form.Location = new Point(scr.WorkingArea.Right /3 , scr.WorkingArea.Bottom / 3);
+
             form.MinimizeBox = false;
             form.MaximizeBox = false;
             form.AcceptButton = buttonOk;
@@ -197,7 +208,56 @@ namespace timestamp
 
             return dialogResult;
         }
+        private bool mouseDown;
 
-        
+  
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+            this.Close();
+
+        }
+
+        private Point lastLocation;
+
+       
+
+        private void Form1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (button1.Text=="ongoing")
+            {
+                buttonIdeiglenes = button1.Text;
+                button1.Text = (DateTime.Now.Subtract(startTime).Add(deltaTread)).ToString(@"hh\:mm");
+            }
+            else
+            {
+                buttonIdeiglenes = button1.Text;
+                button1.Text = (deltaTread).ToString(@"hh\:mm");
+            }
+            
+            mouseDown = true;
+            lastLocation = e.Location;
+            this.Opacity = 1D;
+        }
+
+        private void Form1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (mouseDown)
+            {
+                this.Location = new Point(
+                    (this.Location.X - lastLocation.X) + e.X, (this.Location.Y - lastLocation.Y) + e.Y);
+
+                this.Update();
+            }
+        }
+
+        private void Form1_MouseUp(object sender, MouseEventArgs e)
+        {
+            this.Opacity = 0.5D;
+            mouseDown = false;
+            button1.Text= buttonIdeiglenes;
+        }
+
+       
     }
 }
