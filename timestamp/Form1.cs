@@ -15,7 +15,7 @@ namespace timestamp
         private static System.Timers.Timer aTimer;
         static uint maxido = 0, ido=0;
         TimeSpan workOut, SworkOut= TimeSpan.FromSeconds(0);
-        static uint idoCheck = 10000, limit = 100000;
+        static uint idoCheck = 100000, limit = 900000;
         bool kiskepernyo = true;
         int counter = 0;
         string inputFeld, loginfo, buttonIdeiglenes;
@@ -104,7 +104,7 @@ namespace timestamp
         private void button1_Click(object sender, EventArgs e)
 
         {
-            MessageBox.Show("ido:"+ido + " maxido: " + maxido + " Workout: " +  workOut);
+            //MessageBox.Show("ido:"+ido + " maxido: " + maxido + " Workout: " +  workOut);
             if (button1.Text=="Start")
             {
                 
@@ -118,18 +118,11 @@ namespace timestamp
 
             else if (button1.Text == "ongoing")
             {
-                
-                if (maxido >= limit)
-                {
-                    
-                    MessageBox.Show("tullépted a 15 percet:" + workOut);
-                    
-                }
-                else
+                if (maxido < limit)
                 {
                     maxido = 0;
-                    
                 }
+                
                 workOut = TimeSpan.FromMilliseconds(maxido);
                 SworkOut = SworkOut + workOut;
                 maxido = 0;
@@ -149,7 +142,7 @@ namespace timestamp
                 button1.Text = "ongoing";
                     
             }
-            MessageBox.Show("ido:" + ido + " maxido: " + maxido + " Workout: " + workOut);
+            //MessageBox.Show("ido:" + ido + " maxido: " + maxido + " Workout: " + workOut);
             Export(path);
             
         }
