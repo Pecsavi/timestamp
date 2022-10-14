@@ -11,7 +11,12 @@ namespace timestamp
 
     public partial class Timestamp : Form
     {
-
+        public event System.Timers.ElapsedEventHandler Elapsed;// ez a Jokerfüggvény példánya
+        private static System.Timers.Timer aTimer;
+        static uint maxido = 0, ido=0;
+        TimeSpan workOut, SworkOut= TimeSpan.FromSeconds(0);
+        static uint idoCheck = 10000, limit = 100000;
+        bool kiskepernyo = true;
         int counter = 0;
         string inputFeld, loginfo, buttonIdeiglenes;
         Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
@@ -37,56 +42,121 @@ namespace timestamp
 
             label1.Text = ("New work:" + DateTime.Now.ToString("d"));
             label1.Font = font;
-   
+
+            szamlalo();
         }
 
+        static void szamlalo()
+        {
+
+            // Create a timer with a two second interval.
+            aTimer = new System.Timers.Timer(idoCheck);
+
+            // Hook up the Elapsed event for the timer.
+            aTimer.Elapsed += OnTimedEvent;
+
+            // Have the timer fire repeated events (true is the default)
+            //aTimer.AutoReset = true;
+
+            // Start the timer
+            //aTimer.Enabled = true;
+        }
+
+        static void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e) // ezt kell végrehajtania
+        {
+            
+            ido = IdleTimeFinder.GetIdleTime();
+            if (maxido < ido)
+            {
+                maxido = ido;
+            }
+        }
         private void form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             endTime = DateTime.Now;
 
             if (button1.Text == "ongoing")
             {
-                deltaEtap = endTime.Subtract(startTime) + halfMinute;
+                if (maxido >= limit)
+                {
+                    workOut = TimeSpan.FromMilliseconds(maxido);
+                    deltaEtap = endTime.Subtract(startTime) - workOut + halfMinute;
+                    SworkOut = SworkOut + workOut;
+                }
+                else
+                {
+                    deltaEtap = endTime.Subtract(startTime) + halfMinute;
+                }
+          
                 deltaTread = deltaTread.Add(deltaEtap);
             }
 
             sw = new StreamWriter(path, true);
 
-            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out" + deltaEtap.ToString(@"hh\:mm"));
-            sw.WriteLine("Work finished:" + "  -  Sum Time:" + deltaTread.ToString(@"hh\:mm"));
+            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out " + deltaEtap.ToString(@"hh\:mm"));
+            sw.WriteLine("Work finished:" + "  -  Sum Time: " + deltaTread.ToString(@"hh\:mm"));
+            sw.WriteLine("Workout:" + "  -  Sum Time: " + SworkOut.ToString(@"hh\:mm"));
+
             sw.Close();
 
         }
 
-        
-
         private void button1_Click(object sender, EventArgs e)
+
         {
-            
-            if (button1.Text == "ongoing")
+            MessageBox.Show("ido:"+ido + " maxido: " + maxido + " Workout: " +  workOut);
+            if (button1.Text=="Start")
             {
                 
+                aTimer.AutoReset = true;
+                aTimer.Enabled = true;
+                newActivity = true;
+                button1.BackColor = Color.LightGreen;
+                button1.Text = "ongoing";
+            }
+           
+
+            else if (button1.Text == "ongoing")
+            {
+                
+                if (maxido >= limit)
+                {
+                    
+                    MessageBox.Show("tullépted a 15 percet:" + workOut);
+                    
+                }
+                else
+                {
+                    maxido = 0;
+                    
+                }
+                workOut = TimeSpan.FromMilliseconds(maxido);
+                SworkOut = SworkOut + workOut;
+                maxido = 0;
+                workOut = TimeSpan.FromMilliseconds(maxido);
+                aTimer.Enabled = false;
                 newActivity = false;
                 button1.BackColor = Color.LightPink;
                 button1.Text = "stopped";
-             
+                
             }
-            else
+            else 
             {
-
-                
-                    newActivity = true;
-                    button1.BackColor = Color.LightGreen;
-                    button1.Text = "ongoing";
-                
-                
+                aTimer.AutoReset = true;
+                aTimer.Enabled = true;
+                newActivity = true;
+                button1.BackColor = Color.LightGreen;
+                button1.Text = "ongoing";
+                    
             }
+            MessageBox.Show("ido:" + ido + " maxido: " + maxido + " Workout: " + workOut);
             Export(path);
+            
         }
         
         public void Export(string path )
         {
-            
+           
             inputFeld = "";
             
             loginfo = "";
@@ -112,18 +182,21 @@ namespace timestamp
             else 
             {
 
-                
-                
                 endTime = DateTime.Now;
+
                 
-                 
+                
+                    deltaEtap = endTime.Subtract(startTime) + halfMinute;
+                  
+               
+                    deltaEtap = endTime.Subtract(startTime) + halfMinute;
+                
                 //InputBox(this, "stop activity", "Description:", ref inputFeld);
-                deltaEtap = endTime.Subtract(startTime) + halfMinute;
+               
                 deltaTread = deltaTread.Add(deltaEtap);
                 loginfo = "out:" + endTime.ToString("HH:mm") + "   " +
-                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm");
-               
-                
+                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm") + "   Workout:" + workOut.ToString(@"hh\:mm");
+
             }
                        
            
@@ -134,6 +207,25 @@ namespace timestamp
 
 
         }
+
+        private void Timestamp_DoubleCklick(object sender, EventArgs e)
+        {
+            if (kiskepernyo)
+            {
+                this.Width = 580;
+                this.Height = 150;
+                kiskepernyo = false;
+            }
+            else
+            {
+                this.Width = 144;
+                this.Height = 38;
+                kiskepernyo = true;
+            }
+           
+        }
+
+        
         public void Felrak(string loginfo)
         {
 
@@ -215,7 +307,6 @@ namespace timestamp
         private void label2_Click(object sender, EventArgs e)
         {
             this.Close();
-
         }
 
         private Point lastLocation;

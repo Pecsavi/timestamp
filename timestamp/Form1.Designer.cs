@@ -74,6 +74,7 @@ namespace timestamp
             this.label1.Size = new System.Drawing.Size(46, 17);
             this.label1.TabIndex = 0;
             this.label1.Text = "label1";
+            this.label1.DoubleClick += new System.EventHandler(this.Timestamp_DoubleCklick);
             // 
             // panel1
             // 
@@ -88,7 +89,7 @@ namespace timestamp
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
-            this.ClientSize = new System.Drawing.Size(144, 38);
+            this.ClientSize = new System.Drawing.Size(142, 38);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.panel1);
@@ -101,6 +102,7 @@ namespace timestamp
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.form1_FormClosing);
+            this.DoubleClick += new System.EventHandler(this.Timestamp_DoubleCklick);
             this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Form1_MouseDown);
             this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.Form1_MouseMove);
             this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Form1_MouseUp);
