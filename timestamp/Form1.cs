@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
+using System.Threading;
 
 
 
@@ -12,29 +13,26 @@ namespace timestamp
     public partial class Timestamp : Form
     {
         private static System.Timers.Timer aTimer;
-        static uint maxido = 0, ido=0; //a stopper idö és annak maximuma
+        uint maxpasszivIdo = 0, passzivIdo = 0, atmeneti = 0, summa=0;//a stopper idö és annak maximuma
         TimeSpan workOut, SworkOut= TimeSpan.FromSeconds(0); //a az állással eltöltött részidö és ezek összege
-        static uint idoCheck = 100000, limit = 900000; //IdoCheck (ms) egy intervallum ami után frissülnek az adatok. limit elérése után az idöintervallum bekerül workOut-ba
+        uint limit = 600000; // limit elérése után az idöintervallum bekerül workOut-ba
         bool kiskepernyo = true; //a Form kissebre-nagyobbra állításához
-       
         string inputFeld, loginfo, buttonIdeiglenes;
-        
-        Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
+        readonly Font font = new Font("Microsoft Sans Serif", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
         Label lbl;
-
-        DateTime startTime = DateTime.Now, endTime;//idöpont
-        TimeSpan deltaEtap, deltaTread, halfMinute = TimeSpan.FromSeconds(25);//idötartam
-       
-        Screen scr;
-
+        DateTime EtapStartTime = DateTime.Now, EtapEndTime;
+        DateTime StartTime = DateTime.Now;
+        TimeSpan deltaEtap, deltaTread;//idötartam
+        readonly Screen scr;
         bool newActivity = false;
-        string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
-        
+        readonly string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\timestamp.txt";
         StreamWriter sw;
-
         private Point lastLocation;
         private bool mouseDown;
-
+        static bool kapcsolo=true;
+        bool aktiv_kovetkezik_e = false;
+        
+        
         public Timestamp()
         {
             InitializeComponent();
@@ -49,128 +47,122 @@ namespace timestamp
             sw = new StreamWriter(path, true);
             sw.WriteLine("\n\n" + label1.Text);
             sw.Close();
-
-            szamlalo();
+         
+            Szamlalo();
+            Aktivitate.AllapotvaltozasEsemeny += EsemenyKezeles;
+           
+        }
+        void EsemenyKezeles(object sender, Esemeny esemeny) //Etap közti aktiv inaktiv bekerül a log-ba
+        {
+            
+            sw = new StreamWriter(path, true);
+            sw.WriteLine(esemeny.esemenyleiras + esemeny.idopont.ToString("HH:mm:ss"));
+            sw.Close();
+ 
         }
 
-        static void szamlalo()
+        
+        void Szamlalo()
         {
-
-            // Create a timer with a two second interval.
-            aTimer = new System.Timers.Timer(idoCheck);
+            // Create a timer with a 1 min interval.
+            aTimer = new System.Timers.Timer(60000);
 
             // Hook up the Elapsed event for the timer.
             aTimer.Elapsed += OnTimedEvent;
-
-        }
-
-        static void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e) // ezt kell végrehajtania
-        {
+            aTimer.AutoReset = true;// az idözítö ismétlödik
             
-            ido = IdleTimeFinder.GetIdleTime();
-            if (maxido < ido)
-            {
-                maxido = ido;
-            }
         }
-
-        private void form1_FormClosing(object sender, FormClosingEventArgs e)
+        
+        void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e) // ezt kell végrehajtania - Müködik
         {
-            endTime = DateTime.Now;
 
-            if (button1.Text == "ongoing")
+            passzivIdo = IdleTimeFinder.GetIdleTime();
+
+            if (atmeneti>passzivIdo && aktiv_kovetkezik_e==true) //passziv idöszak végetér. csak az elsö ellenörzésnél írd ki hogy aktív kezdödik
             {
-                if (maxido >= limit)
-                {
-                    workOut = TimeSpan.FromMilliseconds(maxido);
-                    deltaEtap = endTime.Subtract(startTime) + halfMinute;
-                    SworkOut = SworkOut + workOut;
-                }
-                else
-                {
-                    deltaEtap = endTime.Subtract(startTime) + halfMinute;
-                }
-          
-                deltaTread = deltaTread.Add(deltaEtap);
+                _ = new Aktivitate
+                { Valtozas = false };
+                kapcsolo = true;
+                summa += maxpasszivIdo;//zsákold be a visszaesés elötti max állást
+                //ShowMessageBox("aktiv Signal:" + e.SignalTime.ToString("HH:mm:ss") + "\n Now:" + DateTime.Now.ToString("HH:mm:ss") + "  summa +=maxpasszivIdo:" + summa + "/" + maxpasszivIdo);
+                maxpasszivIdo = 0;
+                aktiv_kovetkezik_e = false;
             }
+            atmeneti = passzivIdo;
 
-            sw = new StreamWriter(path, true);
-
-            sw.WriteLine("esc:" + endTime.ToString("HH:mm") + " The user has logged out " + deltaEtap.ToString(@"hh\:mm"));
-            sw.WriteLine("Work finished:" + endTime.ToString("HH:mm") + "  Brutto Time: " + deltaTread.ToString(@"hh\:mm")+ " Summ Pause(which>15min):" + SworkOut.ToString(@"hh\:mm"));
-            
-            sw.Close();
-
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-
-        {
-            if (button1.Text=="Start")
+            if (passzivIdo > limit)
             {
-                
-                aTimer.AutoReset = true;// Have the timer fire repeated events (true is the default)
-                aTimer.Enabled = true; // Start the timer
-                newActivity = true;
-                button1.BackColor = Color.LightGreen;
-                button1.Text = "ongoing";
-            }
-           
-
-            else if (button1.Text == "ongoing")
-            {
-                if (maxido < limit)
+                if (kapcsolo)//csak az elsö ellenörzésnél írd ki hogy passziv a többinél ne
                 {
-                    maxido = 0;
+                    //ShowMessageBox("Inaktiv kezdödik. Signal:" + e.SignalTime.ToString("HH:mm:ss") + "\n Now:" + DateTime.Now.ToString("HH:mm:ss") + "  summa +=maxpasszivIdo:" + summa + "/" + maxpasszivIdo);
+                    kapcsolo =false;
+                    _ = new Aktivitate
+                    { Valtozas = true };
                 }
                 
-                workOut = TimeSpan.FromMilliseconds(maxido);
-                SworkOut = SworkOut + workOut;
-                aTimer.Enabled = false;
-                newActivity = false;
+                if (maxpasszivIdo < passzivIdo)
+                {
+                    maxpasszivIdo = passzivIdo;
+                }
+                aktiv_kovetkezik_e = true;
+            }
+        }
+        
+        private void Button1_Click(object sender, EventArgs e)
+
+        {
+            aktiv_kovetkezik_e = false;
+
+            if (button1.Text == "ongoing") //ha  kikapcsolom a munkamenetet
+            {
+                aTimer.Stop();
+                newActivity = false;// nem aktiv állapot
                 button1.BackColor = Color.LightPink;
                 button1.Text = "stopped";
-                
+
             }
-            else 
+            else //ha  bekapcsolom a munkamenetet
             {
-                maxido = 0;
-                workOut = TimeSpan.FromMilliseconds(maxido);
-                aTimer.AutoReset = true;
-                aTimer.Enabled = true;
-                newActivity = true;
+                aTimer.Start();
+                newActivity = true; // aktív állapot
                 button1.BackColor = Color.LightGreen;
                 button1.Text = "ongoing";
-                    
+
             }
             Export(path);
             
         }
-        
-        public void Export(string path )
+
+        public void Export(string path)
         {
-           
+            
             inputFeld = "";
             loginfo = "";
 
-            sw = new StreamWriter(path , true);
-            
-            if (newActivity)
+            sw = new StreamWriter(path, true);
+
+            if (newActivity) //Start vagy cancel nyomása esetén
             {
-                startTime = DateTime.Now;
-                InputBox(this, "new activity", "Description:", ref inputFeld);
-                loginfo = "in :" + startTime.ToString("HH:mm") + "  " + inputFeld;
-                newActivity = false;
+                maxpasszivIdo = 0; atmeneti = 0; summa = 0;
+                workOut = TimeSpan.FromMilliseconds(0);
+                EtapStartTime = DateTime.Now;
+                InputBox("new activity", "Description:", ref inputFeld);
+                loginfo = "in :" + EtapStartTime.ToString("HH:mm:ss") + "  " + inputFeld;
+             
             }
-           
-            else 
+
+            else //a go megnyomása esetén
             {
-                endTime = DateTime.Now;
-                deltaEtap = endTime.Subtract(startTime) + halfMinute;
-                deltaEtap = endTime.Subtract(startTime) + halfMinute;                         
+     
+                summa += maxpasszivIdo; 
+                EtapEndTime = DateTime.Now;
+                deltaEtap = EtapEndTime.Subtract(EtapStartTime);
                 deltaTread = deltaTread.Add(deltaEtap);
-                loginfo = "out:" + endTime.ToString("HH:mm") + "   " +
-                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm") + "   Workout:" + workOut.ToString(@"hh\:mm");
+                workOut = TimeSpan.FromMilliseconds(summa);
+                SworkOut +=  workOut;
+                loginfo = "out:" + EtapEndTime.ToString("HH:mm:ss") + "   " +
+                    "\u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm") + "   Pause:" + workOut.ToString(@"hh\:mm");
+                maxpasszivIdo = 0; summa = 0;
             }
 
             sw.WriteLine(loginfo);
@@ -179,18 +171,62 @@ namespace timestamp
 
         }
 
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            EtapEndTime = DateTime.Now;
+            TimeSpan bruttoTime = StartTime - EtapEndTime;
+            if (button1.Text == "ongoing")
+            {
+                
+                summa += maxpasszivIdo;
+                workOut = TimeSpan.FromMilliseconds(summa);
+                SworkOut += workOut;
+                deltaEtap = EtapEndTime.Subtract(EtapStartTime);
+                deltaTread = deltaTread.Add(deltaEtap);
+            }
+
+            sw = new StreamWriter(path, true);
+
+            sw.WriteLine("esc: \u0394:" + deltaEtap.ToString(@"hh\:mm") + " \u0394\u0394:" + deltaTread.ToString(@"hh\:mm") + "   Pause:" + workOut.ToString(@"hh\:mm"));
+            sw.WriteLine("Brutto Time:" + bruttoTime.ToString(@"hh\:mm") + "  Netto Time: " + (deltaTread- SworkOut).ToString(@"hh\:mm")+ " Summ Pause:" + SworkOut.ToString(@"hh\:mm"));
+            sw.WriteLine("Work finished:" + EtapEndTime.ToString("HH:mm:ss"));
+
+            sw.Close();
+
+        }
+
+        private void Label4_Click(object sender, EventArgs e)
+        {
+            aTimer.AutoReset = true;
+            limit = (uint) ((Convert.ToInt32(Pause.Text)+1) * 60000);
+            Pause.Text=(limit/60000).ToString();
+        }
+
+        private void Label3_Click(object sender, EventArgs e)
+        {
+            if (Convert.ToInt32(Pause.Text)==1)
+            {
+                return;
+            }
+            aTimer.AutoReset = true;
+            limit = (uint)((Convert.ToInt32(Pause.Text) - 1) * 60000);
+            Pause.Text = (limit / 60000).ToString();
+        }
+
         private void Timestamp_DoubleCklick(object sender, EventArgs e)
         {
+            aTimer.AutoReset = true;
+
             if (kiskepernyo)
             {
-                this.Width = 580;
-                this.Height = 150;
+                Width = panel1.Width;//580
+                Height = panel1.Height + 50;//150
                 kiskepernyo = false;
             }
             else
             {
-                this.Width = 144;
-                this.Height = 38;
+                Width = 144;
+                Height = 38;
                 kiskepernyo = true;
             }
            
@@ -210,17 +246,19 @@ namespace timestamp
                 }
             }
 
-            lbl = new Label();
-            lbl.AutoSize = true;
-            lbl.Font = font;
-            lbl.Location = new Point(5, 11);
-            lbl.Text = loginfo;
+            lbl = new Label
+            {
+                AutoSize = true,
+                Font = font,
+                Location = new Point(5, 11),
+                Text = loginfo,
+            };
             panel1.Controls.Add(lbl);
-            panel1.Height= panel1.Height + 25;
-
+            panel1.Height += 25;
+            
         }
 
-        public static DialogResult InputBox(object sender, string title, string promptText, ref string value)
+        public static DialogResult InputBox( string title, string promptText, ref string value)
         {
            
             Form form = new Form();
@@ -253,7 +291,6 @@ namespace timestamp
             form.ClientSize = new Size(Math.Max(300, label.Right + 10), form.ClientSize.Height);
             form.FormBorderStyle = FormBorderStyle.FixedDialog;
             form.StartPosition = FormStartPosition.Manual;
-            Form form2 = sender as Form;
             Screen scr = Screen.FromPoint(form.Location);
             form.Location = new Point(scr.WorkingArea.Right /3 , scr.WorkingArea.Bottom / 3);
 
@@ -270,21 +307,27 @@ namespace timestamp
             return dialogResult;
         }
 
-        private void label2_Click(object sender, EventArgs e)
+        private void Label2_Click(object sender, EventArgs e)
         {
             this.Close();
         }
 
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
+            TimeSpan eredmeny, deltaEtap1, workOut1;
             buttonIdeiglenes = button1.Text;
-            if (maxido < limit)
+            if (newActivity)
             {
-                maxido = 0;
+                deltaEtap1 = DateTime.Now.Subtract(EtapStartTime);
+                workOut1 = TimeSpan.FromMilliseconds(summa);
+                eredmeny = deltaTread - SworkOut + deltaEtap1 - workOut1;
             }
-            TimeSpan kiesett = SworkOut + TimeSpan.FromMilliseconds(maxido);
-            TimeSpan elteltEtap = DateTime.Now.Subtract(startTime);
-            TimeSpan eredmeny = elteltEtap + deltaTread - kiesett;
+            else
+            {
+                eredmeny = deltaTread - SworkOut;
+            }
+                    
+            
             button1.Text = (eredmeny).ToString();
             mouseDown = true;
             lastLocation = e.Location;
@@ -308,7 +351,19 @@ namespace timestamp
             mouseDown = false;
             button1.Text= buttonIdeiglenes;
         }
+         //használd ha szöveget kellene kiiaratni
+        /*public void ShowMessageBox(string vmi)
+        {
 
-       
+        
+            var thread = new Thread(
+              () =>
+              {
+                  MessageBox.Show(vmi);
+              });
+            thread.Start();
+        }*/
+        //ShowMessageBox("-activ:" + e.SignalTime.ToString("HH:mm:ss") + "  pI/lim:" + passzivIdo + "/" + limit);
+
     }
 }
