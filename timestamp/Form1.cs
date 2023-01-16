@@ -40,7 +40,7 @@ namespace timestamp
             this.StartPosition = FormStartPosition.Manual;
             scr = Screen.FromPoint(this.Location);
             this.Location = new Point(scr.WorkingArea.Right/2, scr.WorkingArea.Bottom/2);
-           
+        
 
             label1.Text = ("New work:" + DateTime.Now.ToString("d"));
             label1.Font = font;
@@ -200,6 +200,34 @@ namespace timestamp
             aTimer.AutoReset = true;
             limit = (uint) ((Convert.ToInt32(Pause.Text)+1) * 60000);
             Pause.Text=(limit/60000).ToString();
+        }
+
+        private void label7_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            if (WindowState == FormWindowState.Minimized)
+            {
+                ShowIcon = true;
+                ShowInTaskbar = true;
+                notifyIcon1.Visible = true;
+                notifyIcon1.BalloonTipText = "Timestamp Minimized";
+                notifyIcon1.BalloonTipTitle = "Timestamp";
+                notifyIcon1.ShowBalloonTip(1000); 
+
+
+            }
+            else
+            {
+                ShowIcon = false;
+                ShowInTaskbar = false;
+                notifyIcon1.Visible = false;
+
+            }
         }
 
         private void Label3_Click(object sender, EventArgs e)
